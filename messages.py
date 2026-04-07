@@ -412,3 +412,16 @@ def return_to_menu(lang="zh"):
         "🐱 Balas【Hi】untuk memulakan bacaan baru.",
         lang
     )
+
+
+# ================= Engagement Hooks =================
+
+def post_draw_hook(lang="zh"):
+    return _t(
+        "🐱 刚才的解读对你有启发吗？\n这是你的命运牌列中尚未翻开的牌...\n\n回复【抽卡】继续探索，或回复【菜单】更换领域。",
+
+        "🐱 Did that reading resonate with you?\nHere is an unopened card from your destiny spread...\n\nReply【Draw】to continue, or【Menu】to change focus.",
+
+        "🐱 Adakah bacaan itu memberi inspirasi?\nIni adalah kad yang belum dibuka dari susunan takdir anda...\n\nBalas【Cabut】untuk teruskan, atau【Menu】untuk tukar bidang.",
+        lang
+    )

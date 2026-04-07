@@ -115,10 +115,10 @@ STRIPE_PRODUCTS = {
 }
 
 # ================= Paths =================
-TAROT_METADATA_PATH = os.getenv("TAROT_METADATA_PATH", "../tarot-assets/tarot_metadata.json")
-ORACLE_FLAVORS_PATH = os.getenv("ORACLE_FLAVORS_PATH", "../tarot-assets/oracle_flavors.json")
+TAROT_METADATA_PATH = os.getenv("TAROT_METADATA_PATH", "tarot-assets/tarot_metadata.json")
+ORACLE_FLAVORS_PATH = os.getenv("ORACLE_FLAVORS_PATH", "tarot-assets/oracle_flavors.json")
 CARD_SCORES_PATH = os.getenv("CARD_SCORES_PATH", "data/card_scores.json")
-CARD_IMAGES_PATH = os.getenv("CARD_IMAGES_PATH", "../tarot-assets/whatsapp-ready/")
+CARD_IMAGES_PATH = os.getenv("CARD_IMAGES_PATH", "tarot-assets/whatsapp-ready/")
 
 # ================= WhatsApp =================
 WA_API_URL = f"https://graph.facebook.com/v18.0/{WA_PHONE_ID}/messages"

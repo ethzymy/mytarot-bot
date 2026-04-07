@@ -10,6 +10,7 @@ import json
 import re
 import requests
 import stripe
+import time
 from flask import Flask, request, jsonify
 from dotenv import load_dotenv
 
@@ -138,6 +139,15 @@ def process_message(phone, text):
             session["category"] = cat["id"]
             label = cat[f"label_{lang}"] if f"label_{lang}" in cat else cat["label_zh"]
             send_text(phone, msg.category_selected(f"{cat['emoji']} {label}", lang))
+            
+            # Send card back visual hook for category selection
+            # TODO: Update with CDN URL when deployed
+            card_back_url = "https://tarot.ethzy.my/assets/card_back_whatsapp.jpg"
+            caption = _t(f"✅ 已连接至【{label}】...\n命运之轮开始转动，牌列已就绪。",
+                         f"✅ Connected to【{label}】...\nThe Wheel of Fortune turns, your deck is ready.",
+                         f"✅ Bersambung ke【{label}】...\nRoda Takdir berputar, dek anda sedia.", lang)
+            send_image(phone, card_back_url, caption)
+            
             session["state"] = "AWAITING_SERVICE"
         else:
             send_text(phone, msg.invalid_input(lang))
@@ -179,6 +189,11 @@ def process_message(phone, text):
             remaining = draw_status["remaining"] - 1
             if remaining > 0:
                 send_text(phone, f"📊 今日剩余抽卡次数: {remaining}/{draw_status['limit']}")
+
+            # Post-draw hook
+            time.sleep(1.5)
+            card_back_url = "https://tarot.ethzy.my/assets/card_back_whatsapp.jpg"
+            send_image(phone, card_back_url, msg.post_draw_hook(lang))
 
             session["state"] = "AWAITING_SERVICE"
             return
@@ -459,6 +474,12 @@ def process_message(phone, text):
             """, (phone, spread_type, category, json.dumps(parsed["cards"]), reading))
 
         record_draw(phone)
+        
+        # Post-draw hook
+        time.sleep(1.5)
+        card_back_url = "https://tarot.ethzy.my/assets/card_back_whatsapp.jpg"
+        send_image(phone, card_back_url, msg.post_draw_hook(lang))
+
         session["state"] = "AWAITING_SERVICE"
         return
 
