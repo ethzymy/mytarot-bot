@@ -28,8 +28,8 @@ def get_or_create_user(phone: str, language: str = "zh") -> dict:
                         "last_bday_edit", "language", "birth_hour",
                         "gender", "lucky_number", "onboarding_done",
                         "referral_code", "referred_by", "card_activated",
-                        "theme", "current_state", "state_data",
-                        "created_at", "updated_at"]
+                        "theme", "created_at", "updated_at",
+                        "current_state", "state_data"]
                 return dict(zip(cols, row))
             return dict(row)
 
