@@ -53,8 +53,8 @@ def send_cards(path):
     # Maps to tarot-assets/whatsapp-ready/
     return send_from_directory('tarot-assets/whatsapp-ready', path)
 
-# Session cache (backed by DB)
-SESSIONS = {}
+
+# Session storage is now strictly database-driven to handle multi-worker Railway environment.
 
 # Shortcut for multi-lang display
 def _t(zh, en, ms, lang="zh"):
@@ -93,24 +93,23 @@ def detect_language(text):
 # ================= State Machine =================
 
 def get_session(phone):
-    """Fetch session from memory, or fallback to DB persistence."""
-    if phone not in SESSIONS:
-        user = get_or_create_user(phone)
-        cur_state = user.get("current_state") or "START"
-        try:
-            state_data = json.loads(user.get("state_data") or "{}")
-        except:
-            state_data = {}
-        
-        SESSIONS[phone] = {
-            "state": cur_state,
-            "language": user.get("language") or "zh",
-            "category": None,
-            "tier": user.get("tier") or "free",
-            "data": state_data
-        }
-        print(f"[DEBUG] Session LOADED for {phone}: State={cur_state}")
-    return SESSIONS[phone]
+    """Fetch session directly from DB to ensure consistency across multiple workers."""
+    user = get_or_create_user(phone)
+    cur_state = user.get("current_state") or "START"
+    try:
+        state_data = json.loads(user.get("state_data") or "{}")
+    except:
+        state_data = {}
+    
+    # Category is now stored inside the 'data' sub-dict to ensure persistence
+    session = {
+        "state": cur_state,
+        "language": user.get("language") or "zh",
+        "tier": user.get("tier") or "free",
+        "data": state_data
+    }
+    print(f"[DEBUG] Session LOADED for {phone} (PID {os.getpid()}): State={cur_state}, Category={state_data.get('category')}")
+    return session
 
 def save_session(phone, session):
     """Persist session state and temporary data to DB."""
@@ -255,7 +254,7 @@ def process_message(phone, text):
     if state == "AWAITING_CATEGORY":
         if text in CATEGORIES:
             cat = CATEGORIES[text]
-            session["category"] = cat["id"]
+            session["data"]["category"] = cat["id"]
             label = cat[f"label_{lang}"] if f"label_{lang}" in cat else cat["label_zh"]
             send_text(phone, msg.category_selected(f"{cat['emoji']} {label}", lang))
             card_back_url = f"{BASE_URL}/assets/card_back_whatsapp.jpg"
@@ -267,7 +266,7 @@ def process_message(phone, text):
         return
 
     if state == "AWAITING_SERVICE":
-        category = session.get("category", "other")
+        category = session["data"].get("category", "other")
         if any(w in text_lower for w in ["抽卡", "draw", "cabut", "抽"]):
             draw_status = check_daily_draws(phone)
             if not draw_status["allowed"]: send_text(phone, msg.draw_limit_reached(0, 0, lang)); return
