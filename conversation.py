@@ -270,8 +270,9 @@ def process_message(phone, text):
             with get_db() as conn:
                 c = conn.cursor()
                 bdays = json.dumps([{"date": birthday, "label": "自己"}])
-                c.execute(f"UPDATE users SET birthdays = {P}, updated_at = datetime('now') WHERE phone = {P}",
-                          (bdays, phone))
+                ts_func = "NOW()" if os.getenv("DATABASE_URL", "").startswith("postgres") else "datetime('now')"
+                sql = f"UPDATE users SET birthdays = {P}, updated_at = {ts_func} WHERE phone = {P}"
+                c.execute(sql, (bdays, phone))
             send_text(phone, msg.onboarding_birth_hour(lang))
             session["state"] = "ONBOARD_BIRTH_HOUR"
         else:
@@ -358,8 +359,9 @@ def process_message(phone, text):
             with get_db() as conn:
                 c = conn.cursor()
                 bdays = json.dumps([{"date": birthday, "label": "自己"}])
-                c.execute(f"UPDATE users SET birthdays = {P}, updated_at = datetime('now') WHERE phone = {P}",
-                          (bdays, phone))
+                ts_func = "NOW()" if os.getenv("DATABASE_URL", "").startswith("postgres") else "datetime('now')"
+                sql = f"UPDATE users SET birthdays = {P}, updated_at = {ts_func} WHERE phone = {P}"
+                c.execute(sql, (bdays, phone))
             send_text(phone, f"✅ 生日已设置: {birthday}\n\n回复【运势】查看运势曲线。")
             session["state"] = "AWAITING_SERVICE"
         else:
