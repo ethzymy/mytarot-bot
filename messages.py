@@ -57,24 +57,24 @@ def onboarding_gender(lang="zh"):
     return _t(
         "🌙 *能量属性*\n\n"
         "塔罗的阴阳能量会因人而异——\n\n"
-        "1️⃣ ☀️ 男 (阳)\n"
-        "2️⃣ 🌙 女 (阴)\n"
-        "3️⃣ 🌀 不透露\n\n"
-        "回复数字 (1-3)。",
-
+        "1️⃣ ☀️ 男 (阳) / M\n"
+        "2️⃣ 🌙 女 (阴) / F\n"
+        "3️⃣ 🌀 不透露 / Other\n\n"
+        "可以直接回复数字 (1-3) 或字母 (M/F)。",
+        
         "🌙 *Energy Attribute*\n\n"
         "Tarot's yin-yang energy varies by individual—\n\n"
-        "1️⃣ ☀️ Male (Yang)\n"
-        "2️⃣ 🌙 Female (Yin)\n"
-        "3️⃣ 🌀 Prefer not to say\n\n"
-        "Reply with a number (1-3).",
+        "1️⃣ ☀️ Male (Yang) / M\n"
+        "2️⃣ 🌙 Female (Yin) / F\n"
+        "3️⃣ 🌀 Prefer not to say / O\n\n"
+        "Reply with a number (1-3) or letter (M/F).",
 
         "🌙 *Atribut Tenaga*\n\n"
         "Tenaga yin-yang Tarot berbeza mengikut individu—\n\n"
-        "1️⃣ ☀️ Lelaki (Yang)\n"
-        "2️⃣ 🌙 Perempuan (Yin)\n"
-        "3️⃣ 🌀 Tidak mahu nyatakan\n\n"
-        "Balas dengan nombor (1-3).",
+        "1️⃣ ☀️ Lelaki (Yang) / M\n"
+        "2️⃣ 🌙 Perempuan (Yin) / F\n"
+        "3️⃣ 🌀 Tidak mahu nyatakan / O\n\n"
+        "Balas dengan nombor (1-3) atau huruf (M/F).",
         lang
     )
 
@@ -84,19 +84,19 @@ def onboarding_lucky_number(lang="zh"):
         "🔢 *直觉数字*\n\n"
         "闭上眼，让灵猫引导你——\n"
         "脑海中浮现的第一个数字是多少？\n\n"
-        "请输入 *1 到 99* 之间的数字。\n"
+        "请输入一个 *1 到 999* 之间的幸运数字。\n\n"
         "这个数字将成为你的命运印记 ✨",
 
         "🔢 *Intuition Number*\n\n"
         "Close your eyes, let Oracle Cat guide you—\n"
         "What is the first number that comes to mind?\n\n"
-        "Enter a number between *1 and 99*.\n"
+        "Please tell us your lucky number (*1 to 999*).\n\n"
         "This number becomes your destiny seal ✨",
 
         "🔢 *Nombor Intuisi*\n\n"
         "Pejamkan mata, biar Oracle Cat membimbing—\n"
         "Apakah nombor pertama dalam fikiran anda?\n\n"
-        "Masukkan nombor antara *1 hingga 99*.\n"
+        "Sila nyatakan nombor bertuah anda (*1 hingga 999*).\n\n"
         "Nombor ini menjadi meterai takdir anda ✨",
         lang
     )
@@ -135,6 +135,7 @@ def onboarding_complete(lang="zh"):
         "4️⃣ 🌀 Lain-lain",
         lang
     )
+
 
 def welcome(lang="zh"):
     return _t(
@@ -342,7 +343,7 @@ def real_card_spread_menu(available_spreads, lang="zh"):
 
     header = _t("🃏 *选择牌阵：*\n\n", "🃏 *Choose a spread:*\n\n",
                 "🃏 *Pilih susunan:*\n\n", lang)
-    footer = _t("\n\n回复数字选择。", "\n\nReply with a number.", "\n\nBalas dengan nombor.", lang)
+    footer = _t("\n\n回复数字选择。", "\n\nReply with a number.", "\n\nBalas with nombor.", lang)
 
     return header + "\n".join(menu) + footer
 
@@ -423,5 +424,52 @@ def post_draw_hook(lang="zh"):
         "🐱 Did that reading resonate with you?\nHere is an unopened card from your destiny spread...\n\nReply【Draw】to continue, or【Menu】to change focus.",
 
         "🐱 Adakah bacaan itu memberi inspirasi?\nIni adalah kad yang belum dibuka dari susunan takdir anda...\n\nBalas【Cabut】untuk teruskan, atau【Menu】untuk tukar bidang.",
+        lang
+    )
+
+
+def profile_display(user, lang="zh"):
+    birthday = "未设置"
+    if user.get("birthdays"):
+        import json
+        try:
+            bdays = json.loads(user["birthdays"]) if isinstance(user["birthdays"], str) else user["birthdays"]
+            if bdays:
+                birthday = bdays[0].get("date", "未设置") if isinstance(bdays[0], dict) else bdays[0]
+        except: pass
+
+    gender_map = {"male": "男 (Yang)", "female": "女 (Yin)", "unknown": "未设置"}
+    gender = gender_map.get(user.get("gender"), "未设置")
+    
+    return _t(
+        f"🐱 *你的灵魂印记 (Soul Profile)*\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"📅 *出生日期*: `{birthday}`\n"
+        f"⏰ *出生时刻*: `{user.get('birth_hour') or '未设置'}`\n"
+        f"🌊 *能量属性*: `{gender}`\n"
+        f"💎 *幸运数字*: `{user.get('lucky_number') or '未设置'}`\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"✨ 你目前的身份等级: *{user.get('tier', 'free').upper()}*\n\n"
+        f"💡 回复【修改】可调整你的印记设定。",
+
+        f"🐱 *Your Soul Profile*\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"📅 *Date of Birth*: `{birthday}`\n"
+        f"⏰ *Birth Hour*: `{user.get('birth_hour') or 'Not Set'}`\n"
+        f"🌊 *Energy Attribute*: `{gender}`\n"
+        f"💎 *Lucky Number*: `{user.get('lucky_number') or 'Not Set'}`\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"✨ Your Current Tier: *{user.get('tier', 'free').upper()}*\n\n"
+        f"💡 Reply【Edit】to adjust your profile.",
+
+        f"🐱 *Profil Jiwa Anda*\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"📅 *Tarikh Lahir*: `{birthday}`\n"
+        f"⏰ *Waktu Lahir*: `{user.get('birth_hour') or 'Belum Set'}`\n"
+        f"🌊 *Atribut Tenaga*: `{gender}`\n"
+        f"💎 *Nombor Bertuah*: `{user.get('lucky_number') or 'Belum Set'}`\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"✨ Tahap Keahlian: *{user.get('tier', 'free').upper()}*\n\n"
+        f"💡 Balas【Ubah】untuk melaraskan profil.",
         lang
     )

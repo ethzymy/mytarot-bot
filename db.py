@@ -67,15 +67,34 @@ P = _placeholder()  # Use db.P in queries for parameterized values
 
 
 def init_db():
-    """Create all tables if they don't exist."""
-
-    # SQLite-compatible CREATE TABLE statements
-    # PostgreSQL equivalents use SERIAL and TIMESTAMP WITH TIME ZONE
+    """Create all tables if they don't exist and run migrations."""
     if IS_POSTGRES:
         _init_postgres()
     else:
         _init_sqlite()
-    print("[DB] Schema initialized")
+    
+    migrate_db()
+    print("[DB] Schema initialized and migrated")
+
+
+def migrate_db():
+    """Add missing columns to existing tables."""
+    with get_db() as conn:
+        c = conn.cursor()
+        
+        # Add current_state and state_data to users if missing
+        if IS_POSTGRES:
+            try:
+                c.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS current_state TEXT DEFAULT 'START'")
+                c.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS state_data JSONB DEFAULT '{}'")
+            except Exception as e:
+                print(f"[DB] Migration notice (Postgres): {e}")
+        else:
+            try:
+                c.execute("ALTER TABLE users ADD COLUMN current_state TEXT DEFAULT 'START'")
+                c.execute("ALTER TABLE users ADD COLUMN state_data TEXT DEFAULT '{}'")
+            except sqlite3.OperationalError:
+                pass # Column already exists
 
 
 def _init_sqlite():
@@ -94,6 +113,8 @@ def _init_sqlite():
                 gender          TEXT DEFAULT 'unknown',
                 lucky_number    INTEGER DEFAULT 0,
                 onboarding_done INTEGER DEFAULT 0,
+                current_state   TEXT DEFAULT 'START',
+                state_data      TEXT DEFAULT '{}',
                 referral_code   TEXT UNIQUE,
                 referred_by     TEXT,
                 card_activated  INTEGER DEFAULT 0,
@@ -102,6 +123,7 @@ def _init_sqlite():
                 updated_at      TEXT DEFAULT (datetime('now'))
             )
         """)
+# ... (rest of _init_sqlite stays same)
 
         c.execute("""
             CREATE TABLE IF NOT EXISTS subscriptions (
@@ -191,6 +213,8 @@ def _init_postgres():
                 gender          TEXT DEFAULT 'unknown',
                 lucky_number    INTEGER DEFAULT 0,
                 onboarding_done BOOLEAN DEFAULT FALSE,
+                current_state   TEXT DEFAULT 'START',
+                state_data      JSONB DEFAULT '{}',
                 referral_code   TEXT UNIQUE,
                 referred_by     TEXT,
                 card_activated  BOOLEAN DEFAULT FALSE,
