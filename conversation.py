@@ -50,18 +50,22 @@ def _t(zh, en, ms, lang="zh"):
 # ================= WhatsApp Helpers =================
 
 def send_text(to, text):
+    print(f"[DEBUG] Sending text to {to}: {text[:50]}...")
     payload = {
         "messaging_product": "whatsapp", "to": to,
         "type": "text", "text": {"body": text}
     }
-    requests.post(WA_API_URL, headers=WA_HEADERS, json=payload)
+    response = requests.post(WA_API_URL, headers=WA_HEADERS, json=payload)
+    print(f"[DEBUG] WhatsApp API Response: {response.status_code} - {response.text}")
 
 def send_image(to, image_url, caption):
+    print(f"[DEBUG] Sending image to {to}: {image_url}")
     payload = {
         "messaging_product": "whatsapp", "to": to,
         "type": "image", "image": {"link": image_url, "caption": caption}
     }
-    requests.post(WA_API_URL, headers=WA_HEADERS, json=payload)
+    response = requests.post(WA_API_URL, headers=WA_HEADERS, json=payload)
+    print(f"[DEBUG] WhatsApp API Response: {response.status_code} - {response.text}")
 
 # ================= Language Detection =================
 
@@ -79,23 +83,34 @@ def get_session(phone):
     """Fetch session from memory, or fallback to DB persistence."""
     if phone not in SESSIONS:
         user = get_or_create_user(phone)
+        cur_state = user.get("current_state") or "START"
+        try:
+            state_data = json.loads(user.get("state_data") or "{}")
+        except:
+            state_data = {}
+        
         SESSIONS[phone] = {
-            "state": user.get("current_state", "START"),
-            "language": user.get("language", "zh"),
+            "state": cur_state,
+            "language": user.get("language") or "zh",
             "category": None,
-            "tier": user.get("tier", "free"),
-            "data": json.loads(user.get("state_data", "{}")) if isinstance(user.get("state_data"), str) else (user.get("state_data") or {})
+            "tier": user.get("tier") or "free",
+            "data": state_data
         }
+        print(f"[DEBUG] Session LOADED for {phone}: State={cur_state}")
     return SESSIONS[phone]
 
 def save_session(phone, session):
     """Persist session state and temporary data to DB."""
-    with get_db() as conn:
-        c = conn.cursor()
-        state_json = json.dumps(session.get("data", {}))
-        ts_func = "NOW()" if os.getenv("DATABASE_URL", "").startswith("postgres") else "datetime('now')"
-        sql = f"UPDATE users SET current_state = {P}, state_data = {P}, updated_at = {ts_func} WHERE phone = {P}"
-        c.execute(sql, (session["state"], state_json, phone))
+    try:
+        with get_db() as conn:
+            c = conn.cursor()
+            state_json = json.dumps(session.get("data", {}))
+            ts_func = "NOW()" if os.getenv("DATABASE_URL", "").startswith("postgres") else "datetime('now')"
+            sql = f"UPDATE users SET current_state = {P}, state_data = {P}, updated_at = {ts_func} WHERE phone = {P}"
+            c.execute(sql, (session["state"], state_json, phone))
+        print(f"[DEBUG] Session SAVED for {phone}: State={session['state']}")
+    except Exception as e:
+        print(f"[ERROR] Session SAVE FAILED for {phone}: {e}")
 
 def process_message(phone, text):
     """Main entry point for processing a user message."""
@@ -284,15 +299,17 @@ def webhook():
         return 'Forbidden', 403
 
     body = request.get_json()
+    print(f"[DEBUG] Raw Webhook Body: {json.dumps(body)}")
     try:
         if not body.get('entry') or not body['entry'][0].get('changes'): return jsonify({"status": "ignored"}), 200
         entry = body['entry'][0]['changes'][0]['value']
         if 'messages' not in entry: return jsonify({"status": "ok"}), 200
         msg_data = entry['messages'][0]; phone = msg_data['from']
         text = msg_data.get('text', {}).get('body', '').strip()
+        print(f"[DEBUG] Processing msg from {phone}: {text}")
         if text: process_message(phone, text)
     except Exception as e:
-        print(f"[ERROR] Webhook: {e}")
+        print(f"[ERROR] Webhook Crash: {e}")
     return jsonify({"status": "ok"}), 200
 
 @app.route('/stripe', methods=['POST'])
