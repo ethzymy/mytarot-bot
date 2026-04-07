@@ -10,7 +10,7 @@ import re
 import requests
 import stripe
 import time
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -18,7 +18,7 @@ load_dotenv()
 from config import (
     STRIPE_API_KEY, STRIPE_WEBHOOK_SECRET,
     WA_API_URL, WA_HEADERS, WA_VERIFY_TOKEN, CATEGORIES, TIERS,
-    CARD_IMAGES_PATH,
+    CARD_IMAGES_PATH, BASE_URL,
 )
 from db import get_db, P, init_db
 from subscription_mgr import (
@@ -39,6 +39,19 @@ from admin_routes import admin_bp
 stripe.api_key = STRIPE_API_KEY
 app = Flask(__name__)
 app.register_blueprint(admin_bp)
+
+# ================= Static Asset Serving =================
+
+@app.route('/assets/<path:path>')
+def send_assets(path):
+    """Serve general assets (card backs, icons)."""
+    return send_from_directory('assets', path)
+
+@app.route('/cards/<path:path>')
+def send_cards(path):
+    """Serve tarot card images (processed for WhatsApp)."""
+    # Maps to tarot-assets/whatsapp-ready/
+    return send_from_directory('tarot-assets/whatsapp-ready', path)
 
 # Session cache (backed by DB)
 SESSIONS = {}
@@ -127,7 +140,7 @@ def process_message(phone, text):
         user = get_or_create_user(phone, lang)
 
         if not user.get("onboarding_done") or session["state"] == "START":
-            card_back_url = "https://tarot.ethzy.my/assets/card_back_whatsapp.jpg"
+            card_back_url = f"{BASE_URL}/assets/card_back_whatsapp.jpg"
             send_image(phone, card_back_url, msg.onboarding_birthday(lang))
             session["state"] = "ONBOARD_BIRTHDAY"
             save_session(phone, session)
@@ -245,7 +258,7 @@ def process_message(phone, text):
             session["category"] = cat["id"]
             label = cat[f"label_{lang}"] if f"label_{lang}" in cat else cat["label_zh"]
             send_text(phone, msg.category_selected(f"{cat['emoji']} {label}", lang))
-            card_back_url = "https://tarot.ethzy.my/assets/card_back_whatsapp.jpg"
+            card_back_url = f"{BASE_URL}/assets/card_back_whatsapp.jpg"
             caption = _t("✅ 洗牌完毕，牌列已就绪。", "✅ Deck ready.", "✅ Dek sedia.", lang)
             send_image(phone, card_back_url, caption)
             session["state"] = "AWAITING_SERVICE"; save_session(phone, session)
@@ -261,8 +274,8 @@ def process_message(phone, text):
             send_text(phone, msg.preparing_draw(category, lang))
             card = draw_single_card(phone, category); record_draw(phone)
             reading = generate_single_reading(card["card_id"], card["orientation"], category, phone, is_pro=(session["tier"] != "free"), language=lang)
-            send_image(phone, f"https://tarot.ethzy.my/cards/{card['card_id']}_whatsapp.png", f"🌕 {card['card_id']}\n\n{reading}")
-            time.sleep(1.5); send_image(phone, "https://tarot.ethzy.my/assets/card_back_whatsapp.jpg", msg.post_draw_hook(lang))
+            send_image(phone, f"{BASE_URL}/cards/{card['card_id']}_whatsapp.png", f"🌕 {card['card_id']}\n\n{reading}")
+            time.sleep(1.5); send_image(phone, f"{BASE_URL}/assets/card_back_whatsapp.jpg", msg.post_draw_hook(lang))
             return
         if any(w in text_lower for w in ["运势", "fortune", "nasib"]):
             if session["tier"] == "free": send_text(phone, "📈 请先回复【订阅】。"); return

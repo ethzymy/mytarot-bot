@@ -8,7 +8,7 @@ and subscription lifecycle (create, upgrade, cancel, webhook).
 import stripe
 from datetime import datetime, date
 
-from config import TIERS, TIER_ORDER, STRIPE_API_KEY, STRIPE_PRODUCTS
+from config import TIERS, TIER_ORDER, STRIPE_API_KEY, STRIPE_PRODUCTS, BASE_URL
 from db import get_db, P
 from referral_manager import add_commission
 
@@ -129,8 +129,8 @@ def create_checkout_session(phone: str, tier: str, referral_code: str = None,
         line_items=[{"price": price_id, "quantity": 1}],
         client_reference_id=phone,
         metadata=metadata,
-        success_url=f"https://tarot.ethzy.my/success?phone={phone}",
-        cancel_url=f"https://tarot.ethzy.my/cancel?phone={phone}",
+        success_url=f"{BASE_URL}/success?phone={phone}",
+        cancel_url=f"{BASE_URL}/cancel?phone={phone}",
     )
 
     return session.url
@@ -148,8 +148,8 @@ def create_deck_checkout(phone: str) -> str:
         line_items=[{"price": price_id, "quantity": 1}],
         client_reference_id=phone,
         metadata={"phone": phone, "product": "physical_deck"},
-        success_url=f"https://tarot.ethzy.my/deck-success?phone={phone}",
-        cancel_url=f"https://tarot.ethzy.my/cancel?phone={phone}",
+        success_url=f"{BASE_URL}/deck-success?phone={phone}",
+        cancel_url=f"{BASE_URL}/cancel?phone={phone}",
     )
 
     return session.url

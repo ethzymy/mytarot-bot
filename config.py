@@ -9,6 +9,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# ================= Networking =================
+PUBLIC_URL = os.getenv("PUBLIC_URL", "web-production-f1268.up.railway.app")
+BASE_URL = f"https://{PUBLIC_URL}"
+
 # ================= API Keys =================
 CLAUDE_API_KEY = os.getenv("CLAUDE_API_KEY", "")
 CLAUDE_MODEL = "claude-3-5-haiku-20241022"
