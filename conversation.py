@@ -499,10 +499,28 @@ def verify():
     return "Forbidden", 403
 
 
-@app.route('/whatsapp', methods=['POST'])
+@app.route('/webhook', methods=['GET', 'POST'])
 def webhook():
+    # Verify Webhook from Meta (GET request)
+    if request.method == 'GET':
+        mode = request.args.get('hub.mode')
+        token = request.args.get('hub.verify_token')
+        challenge = request.args.get('hub.challenge')
+
+        if mode == 'subscribe' and token == WA_VERIFY_TOKEN:
+            print("[INFO] Webhook verified successfully!")
+            return challenge, 200
+        else:
+            print("[ERROR] Webhook verification failed - token mismatch.")
+            return 'Forbidden', 403
+
+    # Handle incoming messages (POST request)
     body = request.get_json()
     try:
+        # Avoid processing if not a valid WhatsApp message structure
+        if not body.get('entry') or not body['entry'][0].get('changes'):
+            return jsonify({"status": "ignored"}), 200
+
         entry = body['entry'][0]['changes'][0]['value']
         if 'messages' not in entry:
             return jsonify({"status": "ok"}), 200
@@ -515,7 +533,7 @@ def webhook():
             process_message(phone, text)
 
     except Exception as e:
-        print(f"[ERROR] {e}")
+        print(f"[ERROR] Webhook processing error: {e}")
 
     return jsonify({"status": "ok"}), 200
 
