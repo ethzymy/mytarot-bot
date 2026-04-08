@@ -112,15 +112,16 @@ def get_session(phone):
     return session
 
 def save_session(phone, session):
-    """Persist session state and temporary data to DB."""
+    """Persist session state, temporary data, and language to DB."""
     try:
         with get_db() as conn:
             c = conn.cursor()
             state_json = json.dumps(session.get("data", {}))
+            lang = session.get("language", "zh")
             ts_func = "NOW()" if os.getenv("DATABASE_URL", "").startswith("postgres") else "datetime('now')"
-            sql = f"UPDATE users SET current_state = {P}, state_data = {P}, updated_at = {ts_func} WHERE phone = {P}"
-            c.execute(sql, (session["state"], state_json, phone))
-        print(f"[DEBUG] Session SAVED for {phone}: State={session['state']}")
+            sql = f"UPDATE users SET current_state = {P}, state_data = {P}, language = {P}, updated_at = {ts_func} WHERE phone = {P}"
+            c.execute(sql, (session["state"], state_json, lang, phone))
+        print(f"[DEBUG] Session SAVED for {phone}: State={session['state']} Lang={lang}")
     except Exception as e:
         print(f"[ERROR] Session SAVE FAILED for {phone}: {e}")
 
@@ -133,15 +134,13 @@ def process_message(phone, text):
 
     # Global commands
     if text_lower in ["hi", "hello", "你好", "嗨", "hai", "menu", "菜单"]:
-        session["language"] = detect_language(text)
-        lang = session["language"]
         session["tier"] = get_user_tier(phone)
         user = get_or_create_user(phone, lang)
 
         if not user.get("onboarding_done") or session["state"] == "START":
-            card_back_url = f"{BASE_URL}/assets/card_back_whatsapp.jpg"
-            send_image(phone, card_back_url, msg.onboarding_birthday(lang))
-            session["state"] = "ONBOARD_BIRTHDAY"
+            # Start explicit language selection instead of auto-detecting
+            send_text(phone, msg.language_selection())
+            session["state"] = "SELECT_LANGUAGE"
             save_session(phone, session)
             return
 
@@ -173,6 +172,19 @@ def process_message(phone, text):
 
     # ---- State-specific handling ----
     state = session["state"]
+
+    if state == "SELECT_LANGUAGE":
+        if text in ["1", "2", "3"]:
+            lang_map = {"1": "zh", "2": "en", "3": "ms"}
+            session["language"] = lang_map[text]
+            lang = session["language"]
+            card_back_url = f"{BASE_URL}/assets/card_back_whatsapp.jpg"
+            send_image(phone, card_back_url, msg.onboarding_birthday(lang))
+            session["state"] = "ONBOARD_BIRTHDAY"
+            save_session(phone, session)
+        else:
+            send_text(phone, "Please choose 1, 2 or 3.\n请选择 1, 2 或 3。")
+        return
 
     if state == "ONBOARD_BIRTHDAY":
         match = re.match(r'(\d{4})-(\d{1,2})-(\d{1,2})', text)

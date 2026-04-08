@@ -27,6 +27,9 @@ ADMIN_SECRET = os.getenv("ADMIN_SECRET", "super_secret_admin_key_123")
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///mytarot.db")
 
+# ================= Testing & Whitelist =================
+TESTER_PHONES = ["60124846349"]  # Unlimited draws for these numbers
+
 # ================= Tier Definitions =================
 TIERS = {
     "free": {

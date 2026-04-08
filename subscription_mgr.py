@@ -8,7 +8,7 @@ and subscription lifecycle (create, upgrade, cancel, webhook).
 import stripe
 from datetime import datetime, date, timedelta
 
-from config import TIERS, TIER_ORDER, STRIPE_API_KEY, STRIPE_PRODUCTS, BASE_URL
+from config import TIERS, TIER_ORDER, STRIPE_API_KEY, STRIPE_PRODUCTS, BASE_URL, TESTER_PHONES
 from db import get_db, P
 from referral_manager import add_commission
 
@@ -96,6 +96,17 @@ def check_daily_draws(phone: str) -> dict:
     tier = get_user_tier(phone)
     limit = TIERS[tier]["daily_draws"]
     quota_day, now_utc8, next_reset = _get_quota_day_and_reset()
+
+    # Developer/Tester bypass
+    if phone in TESTER_PHONES:
+        return {
+            "allowed": True,
+            "used": 0,
+            "limit": limit,
+            "remaining": 999,
+            "remaining_hours": 0,
+            "remaining_mins": 0
+        }
 
     with get_db() as conn:
         c = conn.cursor()
