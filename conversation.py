@@ -269,12 +269,33 @@ def process_message(phone, text):
         category = session["data"].get("category", "other")
         if any(w in text_lower for w in ["抽卡", "draw", "cabut", "抽"]):
             draw_status = check_daily_draws(phone)
-            if not draw_status["allowed"]: send_text(phone, msg.draw_limit_reached(0, 0, lang)); return
+            if not draw_status["allowed"]:
+                send_text(phone, msg.draw_limit_reached(
+                    draw_status["remaining_hours"], 
+                    draw_status["remaining_mins"], 
+                    lang
+                ))
+                return
+            
             send_text(phone, msg.preparing_draw(category, lang))
-            card = draw_single_card(phone, category); record_draw(phone)
-            reading = generate_single_reading(card["card_id"], card["orientation"], category, phone, is_pro=(session["tier"] != "free"), language=lang)
-            send_image(phone, f"{BASE_URL}/cards/{card['card_id']}_whatsapp.png", f"🌕 {card['card_id']}\n\n{reading}")
-            time.sleep(1.5); send_image(phone, f"{BASE_URL}/assets/card_back_whatsapp.jpg", msg.post_draw_hook(lang))
+            try:
+                # 1. Logic & AI Generation
+                card = draw_single_card(phone, category)
+                reading = generate_single_reading(
+                    card["card_id"], card["orientation"], category, phone, 
+                    is_pro=(session["tier"] != "free"), language=lang
+                )
+                
+                # 2. WhatsApp Delivery
+                # Note: We record the draw only if we successfully trigger the delivery attempt.
+                send_image(phone, f"{BASE_URL}/cards/{card['card_id']}_whatsapp.png", f"🌕 {card['card_id']}\n\n{reading}")
+                record_draw(phone)
+                
+                time.sleep(1.5)
+                send_image(phone, f"{BASE_URL}/assets/card_back_whatsapp.jpg", msg.post_draw_hook(lang))
+            except Exception as e:
+                print(f"[ERROR] Draw processing failed for {phone}: {e}")
+                send_text(phone, msg.spiritual_bond_error(lang))
             return
         if any(w in text_lower for w in ["运势", "fortune", "nasib"]):
             if session["tier"] == "free": send_text(phone, "📈 请先回复【订阅】。"); return

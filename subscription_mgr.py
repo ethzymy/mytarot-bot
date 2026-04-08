@@ -6,7 +6,7 @@ and subscription lifecycle (create, upgrade, cancel, webhook).
 """
 
 import stripe
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 from config import TIERS, TIER_ORDER, STRIPE_API_KEY, STRIPE_PRODUCTS, BASE_URL
 from db import get_db, P
@@ -64,46 +64,74 @@ def has_permission(phone: str, min_tier: str) -> bool:
     return TIER_ORDER.get(user_tier, 0) >= TIER_ORDER.get(min_tier, 0)
 
 
+def _get_quota_day_and_reset():
+    """Returns (quota_date_str, reset_datetime_utc8).
+    Quota resets at 6:00 AM UTC+8.
+    """
+    # Assume server is UTC, convert to UTC+8
+    now_utc8 = datetime.utcnow() + timedelta(hours=8)
+    
+    reset_hour = 6
+    if now_utc8.hour < reset_hour:
+        # Before 6 AM, we are still on the previous "quota day"
+        quota_date = (now_utc8 - timedelta(days=1)).date()
+        next_reset = now_utc8.replace(hour=reset_hour, minute=0, second=0, microsecond=0)
+    else:
+        # After 6 AM, we are on the current "quota day"
+        quota_date = now_utc8.date()
+        next_reset = (now_utc8 + timedelta(days=1)).replace(hour=reset_hour, minute=0, second=0, microsecond=0)
+    
+    return quota_date.isoformat(), now_utc8, next_reset
+
+
 def check_daily_draws(phone: str) -> dict:
     """
     Check if user has draws remaining today.
+    Reset happens at 6:00 AM UTC+8.
 
     Returns:
-        {"allowed": bool, "used": int, "limit": int, "remaining": int}
+        {"allowed": bool, "used": int, "limit": int, "remaining": int, 
+         "remaining_hours": int, "remaining_mins": int}
     """
     tier = get_user_tier(phone)
     limit = TIERS[tier]["daily_draws"]
-    today = date.today().isoformat()
+    quota_day, now_utc8, next_reset = _get_quota_day_and_reset()
 
     with get_db() as conn:
         c = conn.cursor()
         c.execute(f"SELECT draw_count FROM daily_usage WHERE phone = {P} AND date = {P}",
-                  (phone, today))
+                  (phone, quota_day))
         row = c.fetchone()
         used = (row[0] if isinstance(row, tuple) else row["draw_count"]) if row else 0
+
+    diff = next_reset - now_utc8
+    rh = diff.seconds // 3600
+    rm = (diff.seconds % 3600) // 60
 
     return {
         "allowed": used < limit,
         "used": used,
         "limit": limit,
         "remaining": max(0, limit - used),
+        "remaining_hours": rh,
+        "remaining_mins": rm
     }
 
 
 def record_draw(phone: str):
     """Increment today's draw count by 1."""
-    today = date.today().isoformat()
+    quota_day, _, _ = _get_quota_day_and_reset()
 
     with get_db() as conn:
         c = conn.cursor()
         c.execute(f"SELECT draw_count FROM daily_usage WHERE phone = {P} AND date = {P}",
-                  (phone, today))
+                  (phone, quota_day))
         if c.fetchone():
             c.execute(f"UPDATE daily_usage SET draw_count = draw_count + 1 WHERE phone = {P} AND date = {P}",
-                      (phone, today))
+                      (phone, quota_day))
         else:
             c.execute(f"INSERT INTO daily_usage (phone, date, draw_count) VALUES ({P}, {P}, 1)",
-                      (phone, today))
+                      (phone, quota_day))
 
 
 def create_checkout_session(phone: str, tier: str, referral_code: str = None,

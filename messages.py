@@ -406,6 +406,24 @@ def invalid_input(lang="zh"):
     )
 
 
+def spiritual_bond_error(lang="zh"):
+    return _t(
+        "🔮 *灵性连接稍微有些波动...*\n\n"
+        "猫猫暂时未能完全感知卡牌的信息。\n"
+        "别担心，配额没有被扣除 🐾\n"
+        "请稍后再次尝试【抽卡】。",
+        "🔮 *Spiritual connection is slightly unstable...*\n\n"
+        "Oracle Cat couldn't catch the message.\n"
+        "Don't worry, your quota was NOT deducted 🐾\n"
+        "Please try【Draw】again in a moment.",
+        "🔮 *Hubungan rohani sedikit tidak stabil...*\n\n"
+        "Oracle Cat tidak dapat menangkap mesej.\n"
+        "Jangan risau, kuota anda TIDAK ditolak 🐾\n"
+        "Sila cuba【Cabut】sekali lagi.",
+        lang
+    )
+
+
 def return_to_menu(lang="zh"):
     return _t(
         "🐱 回复【你好】或【Hi】开始新的占卜之旅。",
